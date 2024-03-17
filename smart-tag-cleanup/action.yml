@@ -1,0 +1,49 @@
+name: "smart-tag-cleanup"
+description: "Cleans up a pre-release git tag on non-main branch"
+inputs:
+  semVer:
+    description: "Semantic version"
+    required: true
+    default: "0.1.0"
+  build-status:
+    description: "Build status"
+    required: true
+    default: "false"
+runs:
+  using: "composite"
+  steps:
+  - shell: bash
+    id: git
+    name: git
+    run: |
+      echo "shouldTag=${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/feature') || github.ref == 'refs/heads/main') }}" >> "$GITHUB_OUTPUT"
+      echo "isFeatureBranch=${{ startsWith(github.ref, 'refs/heads/feature') }}" >> "$GITHUB_OUTPUT"
+      echo "isMainBranch=${{ github.ref == 'refs/heads/main' }}" >> "$GITHUB_OUTPUT"
+      echo "isFeatureMerge=${{ startsWith(github.event.head_commit.message, 'Merge pull request') && contains(github.event.head_commit.message, 'feature') }}" >> "$GITHUB_OUTPUT"
+      echo "lastPreReleaseTag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"
+
+  - shell: bash
+    if: ${{ steps.git.outputs.isFeatureBranch }}
+    name: "cleanup notification"
+    run: |
+      if [[ ${{ inputs.build-status == true }} ]];
+      then
+        echo "Build status is: ${{ inputs.build-status }}. Tag cleanup will be skipped"
+      else
+         echo "Build status is: ${{ inputs.build-status }}. Tag cleanup will be executed"
+      fi
+
+  - shell: bash
+    name: git tag -d <pre-release tag> (push feature/*)
+    if: ${{ steps.git.outputs.isFeatureBranch && inputs.build-status != true && steps.git.outputs.lastPreReleaseTag != '' && }}
+    run: |
+      if [[ ${{ steps.git.outputs.lastPreReleaseTag }} != ${{ inputs.semVer }} ]];
+      then
+        echo "WRN provided semVer ${{ inputs.semVer }} does not match the last pre-release tag ${{ steps.git.outputs.lastPreReleaseTag }}."
+      fi
+
+      if [[ ${{ steps.git.outputs.lastPreReleaseTag }} == *"-"* ]];
+      then
+        echo "${{ steps.git.outputs.lastPreReleaseTag }} is prelease. Deleting..."
+        git push --delete origin ${{ steps.git.outputs.lastPreReleaseTag }}
+      fi

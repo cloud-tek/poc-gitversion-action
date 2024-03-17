@@ -1,0 +1,91 @@
+name: "smart-tag"
+description: "Inserts a git tag"
+inputs:
+  # directory:
+  #   description: "Project directory"
+  #   required: true
+  semVer:
+    description: "Semantic version"
+    required: true
+    default: "0.1.0"
+outputs:
+  tag:
+    description: "Tag"
+    value: ${{ steps.result.outputs.tag }}
+runs:
+  using: "composite"
+  steps:
+  - shell: bash
+    id: git
+    name: git
+    run: |
+      echo "shouldTag=${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/feature') || github.ref == 'refs/heads/main') }}" >> "$GITHUB_OUTPUT"
+      echo "isFeatureBranch=${{ startsWith(github.ref, 'refs/heads/feature') }}" >> "$GITHUB_OUTPUT"
+      echo "isMainBranch=${{ github.ref == 'refs/heads/main' }}" >> "$GITHUB_OUTPUT"
+      echo "isFeatureMerge=${{ startsWith(github.event.head_commit.message, 'Merge pull request') && contains(github.event.head_commit.message, 'feature') }}" >> "$GITHUB_OUTPUT"
+      echo "lastPreReleaseTag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"
+
+  - shell: bash
+    name: git tag -d <pre-release tag> (push feature/*)
+    if: ${{ steps.git.outputs.shouldTag == 'true' && steps.git.outputs.lastPreReleaseTag != '' }}
+    run: |
+      if [[ ${{ steps.git.outputs.lastPreReleaseTag }} == *"-"* ]];
+      then
+        echo "${{ steps.git.outputs.lastPreReleaseTag }} is prelease. Deleting..."
+        git push --delete origin ${{ steps.git.outputs.lastPreReleaseTag }}
+      fi
+
+  - shell: bash
+    id: git-tag-feature
+    name: git tag (push feature/*)
+    if: ${{ github.event_name == 'push' && steps.git.outputs.isFeatureBranch == 'true'}}
+    run: |
+      git tag ${{ inputs.git-version }} --force
+      git push origin ${{ inputs.git-version }} --force
+      echo "${{ steps.gitversion.outputs.semVer }} --> ${{ github.ref }}"
+
+  - shell: bash
+    id: git-tag-main
+    name: git tag (merge feature/* -> main)
+    if: ${{ github.event_name == 'push' && steps.git.outputs.isMainBranch == 'true' && steps.git.outputs.isFeatureMerge == 'true' }}
+    run: |
+      VNEXT=''
+      if [[ ${{ steps.git.outputs.tag }} =~ ^((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))(-(.*))?$ ]];
+      then
+        VNEXT=${BASH_REMATCH[1]}
+        echo "Tagging $VERSION on ${{ github.ref }}"
+      else
+        echo "${{ steps.describe.outputs.tag }} does not match the regex. using provided semVer"
+        VNEXT=${{ inputs.semVer }}
+      fi
+
+      git tag $VNEXT --force
+      git push origin $VNEXT --force
+      echo "$VNEXT --> ${{ github.ref }}"
+      echo "tag=$VNEXT" >> "$GITHUB_OUTPUT"
+  - shell: bash
+    id: result
+    name: result
+    run: |
+      VNEXT=''
+      if [[]];
+      then
+      else
+      echo "tag=$VNEXT" >> "$GITHUB_OUTPUT"
+# =========
+
+  #$(git describe --tags --abbrev=0 --match "[0-9]*.[0-9]*.[0-9]*-*")
+  # - shell: bash
+  #   id: describe
+  #   name: git tag describe
+  #   if: ${{ steps.git.outputs.shouldTag == 'true' }}
+  #   run: |
+  #     TAG=$(git describe --tags --abbrev=0)
+  #     if [[ $TAG == *"-"* ]];
+  #     then
+  #       echo "$TAG is prelease. Scheduling for deletion..."
+  #       echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+  #     else
+  #       echo "$TAG is not prelease. Skipping..."
+  #       echo "tag=none" >> "$GITHUB_OUTPUT"
+  #     fi
