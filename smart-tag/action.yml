@@ -40,8 +40,8 @@ runs:
     name: git tag (push feature/*)
     if: ${{ github.event_name == 'push' && steps.git.outputs.isFeatureBranch == 'true'}}
     run: |
-      git tag ${{ inputs.git-version }} --force
-      git push origin ${{ inputs.git-version }} --force
+      git tag ${{ inputs.semVer }} --force
+      git push origin ${{ inputs.semVer }} --force
       echo "${{ steps.gitversion.outputs.semVer }} --> ${{ github.ref }}"
 
   - shell: bash
