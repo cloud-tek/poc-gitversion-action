@@ -51,12 +51,12 @@ runs:
     if: ${{ github.event_name == 'push' && steps.git.outputs.isMainBranch == 'true' && steps.git.outputs.isFeatureMerge == 'true' }}
     run: |
       VNEXT=''
-      if [[ ${{ steps.git.outputs.tag }} =~ ^((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))(-(.*))?$ ]];
+      if [[ ${{ steps.git.outputs.lastPreReleaseTag }} =~ ^((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))(-(.*))?$ ]];
       then
         VNEXT=${BASH_REMATCH[1]}
         echo "Tagging $VERSION on ${{ github.ref }}"
       else
-        echo "${{ steps.describe.outputs.tag }} does not match the regex. using provided semVer"
+        echo "${{ steps.describe.outputs.lastPreReleaseTag }} does not match the regex. using provided semVer"
         VNEXT=${{ inputs.semVer }}
       fi
 
