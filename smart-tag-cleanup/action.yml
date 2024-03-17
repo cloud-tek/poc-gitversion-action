@@ -35,7 +35,7 @@ runs:
 
   - shell: bash
     name: git tag -d <pre-release tag> (push feature/*)
-    if: ${{ steps.git.outputs.isFeatureBranch && inputs.build-status != true && steps.git.outputs.lastPreReleaseTag != '' }}
+    if: ${{ steps.git.outputs.isFeatureBranch && inputs.build-status != 'success' && steps.git.outputs.lastPreReleaseTag != '' }}
     run: |
       if [[ ${{ steps.git.outputs.lastPreReleaseTag }} != ${{ inputs.semVer }} ]];
       then
