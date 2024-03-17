@@ -43,6 +43,7 @@ runs:
       git tag ${{ inputs.semVer }} --force
       git push origin ${{ inputs.semVer }} --force
       echo "${{ steps.gitversion.outputs.semVer }} --> ${{ github.ref }}"
+      echo "tag=${{ inputs.semVer }" >> "$GITHUB_OUTPUT"
 
   - shell: bash
     id: git-tag-main
@@ -68,9 +69,13 @@ runs:
     name: result
     run: |
       VNEXT=''
-      if [[]];
+      if [[ ${{ steps.git.outputs.isMainBranch == 'true' && steps.git.outputs.isFeatureMerge == 'true' }} ]];
       then
+        VNEXT=${{ steps.git-tag-main.outputs.tag }}
       else
+        VNEXT=${{ steps.git-tag-feature.outputs.tag }}
+      fi
+
       echo "tag=$VNEXT" >> "$GITHUB_OUTPUT"
 # =========
 
