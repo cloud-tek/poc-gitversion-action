@@ -38,12 +38,12 @@ runs:
   - shell: bash
     id: git-tag-feature
     name: git tag (push feature/*)
-    if: ${{ github.event_name == 'push' && steps.git.outputs.isFeatureBranch == 'true'}}
+    if: ${{ github.event_name == 'push' && steps.git.outputs.isFeatureBranch == 'true' }}
     run: |
       git tag ${{ inputs.semVer }} --force
       git push origin ${{ inputs.semVer }} --force
       echo "${{ steps.gitversion.outputs.semVer }} --> ${{ github.ref }}"
-      echo "tag=${{ inputs.semVer }" >> "$GITHUB_OUTPUT"
+      echo "tag=${{ inputs.semVer }}" >> "$GITHUB_OUTPUT"
 
   - shell: bash
     id: git-tag-main
