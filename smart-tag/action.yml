@@ -19,25 +19,15 @@ runs:
       TAG=$(git describe --tags --abbrev=0)
       echo "last tag: $TAG"
       echo "shouldTag=${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/feature') || github.ref == 'refs/heads/main') }}" >> "$GITHUB_OUTPUT"
-      echo "isFeatureBranch=${{ startsWith(github.ref, 'refs/heads/feature') }}" >> "$GITHUB_OUTPUT"
+      echo "isPreReleaseBranch=${{ startsWith(github.ref, 'refs/heads/feature') || startsWith(github.ref, 'refs/heads/release') }}" >> "$GITHUB_OUTPUT"
       echo "isMainBranch=${{ github.ref == 'refs/heads/main' }}" >> "$GITHUB_OUTPUT"
-      echo "isFeatureMerge=${{ startsWith(github.event.head_commit.message, 'Merge pull request') && contains(github.event.head_commit.message, 'feature') }}" >> "$GITHUB_OUTPUT"
+      echo "isPrMerge=${{ startsWith(github.event.head_commit.message, 'Merge pull request') && (contains(github.event.head_commit.message, 'feature') || contains(github.event.head_commit.message, 'release')) }}" >> "$GITHUB_OUTPUT"
       echo "lastPreReleaseTag=$TAG" >> "$GITHUB_OUTPUT"
-
-  # - shell: bash
-  #   name: git tag -d <pre-release tag> (push feature/*)
-  #   if: ${{ steps.git.outputs.shouldTag == 'true' && steps.git.outputs.lastPreReleaseTag != '' }}
-  #   run: |
-  #     if [[ ${{ steps.git.outputs.lastPreReleaseTag }} == *"-"* ]];
-  #     then
-  #       echo "${{ steps.git.outputs.lastPreReleaseTag }} is prelease. Deleting..."
-  #       git push --delete origin ${{ steps.git.outputs.lastPreReleaseTag }}
-  #     fi
 
   - shell: bash
     id: git-tag-feature
     name: git tag (push feature/*)
-    if: ${{ github.event_name == 'push' && steps.git.outputs.isFeatureBranch == 'true' }}
+    if: ${{ github.event_name == 'push' && steps.git.outputs.isPreReleaseBranch == 'true' }}
     run: |
       git tag ${{ inputs.semVer }} --force
       git push origin ${{ inputs.semVer }} --force
@@ -47,7 +37,7 @@ runs:
   - shell: bash
     id: git-tag-main
     name: git tag (merge feature/* -> main)
-    if: ${{ github.event_name == 'push' && steps.git.outputs.isMainBranch == 'true' && steps.git.outputs.isFeatureMerge == 'true' }}
+    if: ${{ github.event_name == 'push' && steps.git.outputs.isMainBranch == 'true' && steps.git.outputs.isPrMerge == 'true' }}
     run: |
       VNEXT=''
       if [[ ${{ steps.git.outputs.lastPreReleaseTag }} =~ ^((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))(-(.*))?$ ]];
@@ -63,12 +53,13 @@ runs:
       git push origin $VNEXT --force
       echo "$VNEXT --> ${{ github.ref }}"
       echo "tag=$VNEXT" >> "$GITHUB_OUTPUT"
+
   - shell: bash
     id: result
     name: result
     run: |
       VNEXT=''
-      if [[ ${{ steps.git.outputs.isMainBranch == 'true' && steps.git.outputs.isFeatureMerge == 'true' }} ]];
+      if [[ ${{ steps.git.outputs.isMainBranch == 'true' && steps.git.outputs.isPrMerge == 'true' }} ]];
       then
         VNEXT=${{ steps.git-tag-main.outputs.tag }}
       else
