@@ -5,10 +5,6 @@ inputs:
     description: "Semantic version"
     required: true
     default: "0.1.0"
-  build-status:
-    description: "Build status"
-    required: true
-    default: "false"
 runs:
   using: "composite"
   steps:
@@ -23,19 +19,8 @@ runs:
       echo "lastPreReleaseTag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"
 
   - shell: bash
-    if: ${{ steps.git.outputs.isFeatureBranch }}
-    name: "cleanup notification"
-    run: |
-      if [[ ${{ inputs.build-status == true }} ]];
-      then
-        echo "Build status is: ${{ inputs.build-status }}. Tag cleanup will be skipped"
-      else
-         echo "Build status is: ${{ inputs.build-status }}. Tag cleanup will be executed"
-      fi
-
-  - shell: bash
     name: git tag -d <pre-release tag> (push feature/*)
-    if: ${{ steps.git.outputs.isFeatureBranch && inputs.build-status != 'success' && steps.git.outputs.lastPreReleaseTag != '' }}
+    if: ${{ steps.git.outputs.isFeatureBranch && steps.git.outputs.lastPreReleaseTag != '' }}
     run: |
       if [[ ${{ steps.git.outputs.lastPreReleaseTag }} != ${{ inputs.semVer }} ]];
       then
